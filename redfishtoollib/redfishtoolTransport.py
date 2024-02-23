@@ -491,7 +491,7 @@ class RfTransport():
         nextLink=True
         for attempt in range(0,rft.MaxNextLinks):
             try:
-                rft.printVerbose(3,"Transport:SendRecv:    {} {}".format(method,url))
+                rft.printVerbose(3,"Transport:SendRecv:X:    {} {}".format(method,url))
                 t1=time.time()
                 r = requests.request(method, url, headers=hdrs, auth=authType, verify=verify, data=reqData,
                                      timeout=(rft.waitTime,rft.timeout),**kwargs)  # GET ^/redfish
@@ -499,7 +499,17 @@ class RfTransport():
                 rft.elapsed = t2 - t1
                 # print request headers
                 rft.printStatus(3,r=r,authMsg=authMsg)
+                rft.printStatus(4,r=r,authMsg=authMsg)
+                print("#__Response.Headers: {}".format(r.headers))
 
+                if (method == 'GET'):
+                    getEtag=r.headers["Etag"]
+                    print("DEBUG:X: getEtag:{}".format(getEtag))
+                else:
+                    r.headers["Etag"] = "\"2852C3D2\""
+                    getEtag=r.headers["Etag"]
+                    print("DEBUG:X:Y: getEtag:{}".format(getEtag))
+                r.headers["Etag"] = "\"2852C3D2\""
             except requests.exceptions.ConnectTimeout:
                 # connect timeout occured.  try again w/o sleeping since a timeout already occured
                 rft.printVerbose(5,"Transport: connectTimeout, try again")
@@ -655,13 +665,14 @@ class RfTransport():
             sleep_for = self.sleepFor(r)
             self.printVerbose(2, "Transport:waitForTask: sleep for %s seconds" % sleep_for)
             time.sleep(sleep_for)
-            self.printVerbose(3, "Transport:SendRecv:    {} {}".format('GET', url))
+            self.printVerbose(5, "Transport:SendRecv:    {} {}".format('GET', url))
             t1 = time.time()
             r = requests.get(url, headers=headers, auth=auth, verify=verify,
                              timeout=timeout, **kwargs)
             self.elapsed = time.time() - t1
             self.printStatus(1, r=r)
             self.printStatus(2, r=r)
+            self.printStatus(5, r=r)
             if time.time() >= timeout_at and r.status_code == 202:
                 break
         if r.status_code == 202:
@@ -1201,9 +1212,10 @@ class RfTransport():
         # If the get returns an etag header, the patch should include header:  If-Match: W/"<string>"
         # for some patches (updating users, the service will reject it if not included
 
-        #print("DEBUG: etag header:{}".format(r.headers))
+        print("DEBUG: etag header:{}".format(r.headers))
         if( "Etag" in r.headers ):
             getEtag=r.headers["Etag"]
+            print("DEBUG: getEtag:{}".format(getEtag))
             patchHeaders={ "content-type": "application/json", "if-match": getEtag }
             #where in this case, the getEtag header will have double quotes embedded in it
         else:
